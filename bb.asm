@@ -11,6 +11,15 @@
 start:
 	mov sp, 7c00h
 
+; initialize segment registers
+	mov ax, 0
+	mov ds, ax
+	mov es, ax
+	mov ss, ax
+
+; save dx value
+	mov [saved_drive_num], dl
+
 ; service 0: set videomode ah
 ; param: which video mode (13h: 320x200, 256 colors) al
 ; ax: ah (high 8 bits), al (low)
@@ -19,11 +28,26 @@ start:
 ; calling video bios
 ; software interrupt 10h
 	int 10h
+	mov ax, 3
 	call clearscreen
 
-; infinite loop
-end:
-	jmp end
+; load 2nd sector from boot device and jump to it
+; bios helpers, 13h = disk io
+	mov ax, 0
+	mov ds, ax
+	mov ah, 02h 			; call 2: read sectors into memory
+	mov al, 1				; number of sectors to read
+	mov ch, 0				; low 8 bits of cylinder number
+	mov cl, 2				; sector number that starts from 1
+	mov dh, 0				; head number
+	mov dl, [saved_drive_num]	; 8bits
+	mov bx, sector_2
+	int 13h
+; error check: if carry flag isn't set jump to loaded code
+	jnc	sector_2
+.inf_loop:
+	jmp .inf_loop
+
 
 clearscreen:
 ; video ram is mapped in a0000
@@ -37,12 +61,14 @@ clearscreen:
 ; automatically set to 7c0 (7c00h)
 ; offset can be paired with any register
 ; pair the registers
+	push ax
 	mov ax, 0a000h
 	mov ds, ax
 	mov di, 0
+	pop ax
 ; counter cx
 	mov cx, 64000
-	mov ax, 3
+
 .loop_begin:
 ; dereferrence[] address
 	mov [di], al
@@ -52,7 +78,16 @@ clearscreen:
 	jnz .loop_begin
 	ret
 
+saved_drive_num:
+	db 0 ; declare byte 0
+
 ; assembler trick: write as many 0 needed to fill 510 bytes
 ; $ <- means here
 	times 510-($-$$) db 0
 	dw 0aa55h
+
+sector_2:
+	mov ax, 5
+	call clearscreen
+.inf_loop:
+	jmp .inf_loop
