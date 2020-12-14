@@ -17,19 +17,36 @@ start:
 	mov es, ax
 	mov ss, ax
 
-; save dx value
+; save dl value
+; bios sets in dl the num of the drive that
+; loaded you so if you overwrite dl you can reuse it
 	mov [saved_drive_num], dl
 
 ; service 0: set videomode ah
 ; param: which video mode (13h: 320x200, 256 colors) al
 ; ax: ah (high 8 bits), al (low)
+; call 0 = set_videomode it expects the video mode in al
+; ah : 0, al: 13, ax:ahal
 	mov ax, 13h
 
 ; calling video bios
 ; software interrupt 10h
+; what's the value of ah? al=video mode when ah=0
+; which set which video mode
 	int 10h
 	mov ax, 3
 	call clearscreen
+
+; waiting for keypress
+; x86 has 2 special instructions to read/write from I/O
+; devices: in and out (because some processors have different
+; address spaces for devices and for memory, arm not)
+.key_wait:
+	in al, 64h	; 60h = keyb data port, 64h = keyb status port
+	and al, 1	; 1 = OUTBUF_FULL = the keyb controller out buf is full
+	jz .key_wait
+
+	in al, 60h	; reads the keyb that was pressed to reset the flag
 
 ; load 2nd sector from boot device and jump to it
 ; bios helpers, 13h = disk io
