@@ -96,7 +96,7 @@ clearscreen:
 	ret
 
 saved_drive_num:
-	db 0 ; declare byte 0
+	db 0 ; define byte 0
 
 ; assembler trick: write as many 0 needed to fill 510 bytes
 ; $ <- means here
@@ -104,7 +104,29 @@ saved_drive_num:
 	dw 0aa55h
 
 sector_2:
-	mov ax, 5
-	call clearscreen
+; disp palette
+	mov ax, 0a000h	; video segment points to video memory
+	mov ds, ax
+	mov bx, 0		; video offset
+	mov cx, 0		; y
+.y_loop:
+	mov dx, 0		; x
+.x_loop:
+	mov ax, dx
+	test ax, 0ff00h	; lower 8 bits 0, highest 1, Z flag is set while < 256, test = and but doesnt change ax	
+	jz	.skip_clear_ax
+	mov al, 0
+.skip_clear_ax:
+	mov [bx], al	; pixel written on screen
+	inc bx			; increment
+	inc dx
+	cmp dx, 320
+	jnz .x_loop
+	inc cx
+	cmp cx, 200
+	jnz .y_loop
+
+; fix palette (256 colors)
+	
 .inf_loop:
 	jmp .inf_loop
