@@ -22,6 +22,30 @@
 	out dx, al
 %endmacro
 
+bios_param_block:
+	jmp start	; 2 bytes
+	nop		; 1 byte
+	; start of BPB at offset 3
+	db "BSPL 0.1"	; 03h: OEM ident, 8 bytes
+	dw 512		; 0bh: bytes per sector
+	db 1		; 0dh: sectors per cluster
+	dw 1		; 0eh: reserved sectors (including boot record)
+	db 2		; 10h: number of FATs
+	dw 224		; 11h: number of dir entries
+	dw 2880		; 13h: number of sectors in volume
+	db 0fh		; 15h: media descriptor type (f = 3.5" HD floppy)
+	dw 9		; 16h: number of sectors per FAT
+	dw 18		; 18h: number of sectors per track
+	dw 2		; 1ah: number of heads
+	dd 0		; 1ch: number of hidden sectors
+	dd 0		; 20h: high bits of sector count
+	db 0		; 24h: drive number
+	db 0		; 25h: winnt flags
+	db 28h		; 26h: signature(?)
+	dd 0		; 27h: volume serial number
+	db "BOOTBOOT   "; 2bh: volume label, 11 bytes
+	db "FAT12   "	; 36h: filesystem id, 8 bytes
+
 start:
 	mov sp, 7c00h
 
@@ -186,8 +210,8 @@ main_loop:
 	add ax, bx
 	sub di, ax
 	call rand
-	and ax, 3		; random value in 0, 15
-	sub ax, 1		; random value in -3, 12
+	and ax, 3		; random value in 0, 2
+	sub ax, 1		; random value in -1, 1
 	add di, ax
 	mov si, lovebug
 	call blit32
@@ -242,6 +266,23 @@ main_loop:
 	call print_num
 	mov si, str_newline
 	call print_str
+
+	mov dx, 80h		; default to load from drive 80h
+	cmp byte [saved_drive_num], 80h
+	jnz .not_hd
+	inc dl			; next hd
+.not_hd:
+; load hard disk boot sector
+	xor ax, ax
+	mov es, ax
+	mov bx, 7c00h
+	mov ah, 02h
+	mov al, 1
+	mov ch, 0
+	mov cl, 1
+	mov dh, 0
+	int 13h
+	jnc 7c00h
 .inf_loop:
 	jmp .inf_loop
 
