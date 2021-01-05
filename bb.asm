@@ -175,7 +175,17 @@ main_loop:
 	jnz .static_loop
 
 	; draw lovebug
-	mov di, 32000
+	mov di, (200 - 32) * 320 + 160 - 16
+	mov ax, [num_frames]
+	mov bx, ax
+	shl ax, 8
+	shl bx, 6
+	add ax, bx
+	sub di, ax
+	call rand
+	and ax, 3		; random value in 0, 15
+	sub ax, 1		; random value in -3, 12
+	add di, ax
 	mov si, lovebug
 	call blit32
 
@@ -201,12 +211,15 @@ main_loop:
 	pop es
 
 	inc word [num_frames]
+	cmp word [num_frames], 200 - 32
+	jz .end
 
 	in al, 64h		; 60h = keyb data port, 64h = keyb status port
 	and al, 1		; 1 = OUTBUF_FULL = the keyb controller out buf is full
 	jz main_loop	; no key pressed, loop back
 	in al, 60h		; reads the keyb that was pressed to reset the flag
 
+.end:
 ; re-enable all interrupts
 	sti
 
