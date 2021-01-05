@@ -177,6 +177,9 @@ main_loop:
 	; draw lovebug
 	mov di, (200 - 32) * 320 + 160 - 16
 	mov ax, [num_frames]
+	shr ax, 2		; /4
+	cmp ax, 200 - 32
+	jz .end
 	mov bx, ax
 	shl ax, 8
 	shl bx, 6
@@ -190,11 +193,15 @@ main_loop:
 	call blit32
 
 ; wait for vblank
-.vsync:
+.vsync_blank:
 	mov dx, 3dah
 	in al, dx
+	and al, 8
+	jnz	.vsync_blank
+.vsync_visible:
+	in al, dx
 	and al, 8 		; the 4th bit is 1 when we are in the vertical blanking period
-	jnz	.vsync
+	jz .vsync_visible
 
 ; copy backbuffer to video memory
 	push es
@@ -211,8 +218,9 @@ main_loop:
 	pop es
 
 	inc word [num_frames]
-	cmp word [num_frames], 200 - 32
-	jz .end
+;   moved above:
+;	cmp word [num_frames], 200 - 32
+;	jz .end
 
 	in al, 64h		; 60h = keyb data port, 64h = keyb status port
 	and al, 1		; 1 = OUTBUF_FULL = the keyb controller out buf is full
