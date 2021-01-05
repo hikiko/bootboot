@@ -1,3 +1,6 @@
+; author Eleni Maria Stea <elene.mst@gmail.com>
+; my x86 assembly helloworld :)
+
 ; org: all instructions from now on start in 7c00h
 ; 7c00h is where the bios loads the 1st sector
 ; assembler formatting:
