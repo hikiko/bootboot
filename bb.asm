@@ -37,17 +37,6 @@ start:
 	mov ax, 3
 	call clearscreen
 
-; waiting for keypress
-; x86 has 2 special instructions to read/write from I/O
-; devices: in and out (because some processors have different
-; address spaces for devices and for memory, arm not)
-.key_wait:
-	in al, 64h	; 60h = keyb data port, 64h = keyb status port
-	and al, 1	; 1 = OUTBUF_FULL = the keyb controller out buf is full
-	jz .key_wait
-
-	in al, 60h	; reads the keyb that was pressed to reset the flag
-
 ; load 2nd sector from boot device and jump to it
 ; bios helpers, 13h = disk io
 	mov ax, 0
@@ -143,5 +132,42 @@ sector_2:
 	test al, 3fh	; test with 3fh to keep the lowest 6 bits of al
 	jnz .pal_loop
 
+; disable all interrupts (for bios to not read the keyboard)
+	cli
+
+main_loop:
+	mov ax, 0a000h
+	mov ds, ax
+	xor bx, bx		; mov bx, 0 to clear the register
+.static_loop:
+	call rand
+	and ax, 3fh		; last six bits of eax (see rand)
+	mov [bx], al
+	inc bx
+	cmp bx, 64000	; num pixels
+	jnz .static_loop
+
+	in al, 64h		; 60h = keyb data port, 64h = keyb status port
+	and al, 1		; 1 = OUTBUF_FULL = the keyb controller out buf is full
+	jz main_loop	; no key pressed, loop back
+	in al, 60h		; reads the keyb that was pressed to reset the flag
+
+; re-enable all interrupts
+	sti
+
 .inf_loop:
 	jmp .inf_loop
+
+; random number generator
+; by nuclear
+rand:
+	mov eax, [randval]
+	mul dword [randmul]
+	add eax, 12345
+	and eax, 0x7fffffff
+	mov [randval], eax
+	shr eax, 16
+	ret
+
+randmul dd 1103515245
+randval dd 0ace1h
