@@ -135,14 +135,23 @@ sector_2:
 ; disable all interrupts (for bios to not read the keyboard)
 	cli
 
-main_loop:
-	mov ax, 0a000h
+	; ds on 0 because rand uses it for accesses to mem
+	xor ax, ax
 	mov ds, ax
+	mov ax, 0a000h
+	mov es, ax
+main_loop:
+; wait for vblank
+	mov dx, 3dah
+	in al, dx
+	and al, 8 		; the 4th bit is 1 when we are in the vertical blanking period
+	jz main_loop
+
 	xor bx, bx		; mov bx, 0 to clear the register
 .static_loop:
 	call rand
 	and ax, 3fh		; last six bits of eax (see rand)
-	mov [bx], al
+	mov [es:bx], al    ; [] -> bx offset and default segment ds we change it to es
 	inc bx
 	cmp bx, 64000	; num pixels
 	jnz .static_loop
