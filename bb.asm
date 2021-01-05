@@ -126,7 +126,22 @@ sector_2:
 	cmp cx, 200
 	jnz .y_loop
 
-; fix palette (256 colors)
-	
+; setup grayscale palette (64 first colors because ramdac uses 6 bits / color so 2^6)
+; ram dac (digital to analog converter) tis vga
+; in a ^ register which index we want to write
+; 3 writes in another ramdac register (data)
+; ramdac feature: when you need to set a palette
+	mov al, 0		; first index
+	mov dx, 3c8h	; ramdac index registe
+	out dx, al		; because io port (address) > 255
+	inc dx			; ramdac data register: 3c9h
+.pal_loop:
+	out dx, al		; r
+	out dx, al		; g
+	out dx, al		; b
+	inc al
+	test al, 3fh	; test with 3fh to keep the lowest 6 bits of al
+	jnz .pal_loop
+
 .inf_loop:
 	jmp .inf_loop
